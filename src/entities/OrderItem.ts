@@ -1,15 +1,21 @@
-import {Entity, PrimaryGeneratedColumn, Column, ManyToMany, JoinTable} from "typeorm";
-import { v4 as uuidv4 } from 'uuid';
+import {Entity, PrimaryGeneratedColumn, Column, ManyToOne} from "typeorm";
+import {Product} from "./Product";
+import {Order} from "./Order";
+
 @Entity()
 export class OrderItem {
     @PrimaryGeneratedColumn("uuid")
-    id: string = uuidv4();
+    id: string;  // Bỏ = uuidv4()
 
-    @Column({type: "int", default: 1})
+    @ManyToOne(() => Product, product => product.orderItems)
+    product: Product;
+
+    @ManyToOne(() => Order, order => order.orderItems)
+    order: Order;
+
+    @Column({ type: "int" })
     quantity: number;
 
-    @ManyToMany(() => Product, product => product.orderItems)
-    @JoinTable()
-    product: Product;
     @Column({ type: "decimal", precision: 10, scale: 2 })
+    price: number;
 }

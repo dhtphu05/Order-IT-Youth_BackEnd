@@ -1,7 +1,7 @@
 // src/index.ts
 import express from 'express';
 import "reflect-metadata";
-import { AppDataSource } from './ormconfig';
+import { AppDataSource } from '../ormconfig';
 const app = express();
 const port = 3000;
 

@@ -1,16 +1,21 @@
 {
   "compilerOptions": {
     "target": "ES2020",
-    "module": "ESNext",              // Cho phép import/export
+    "module": "CommonJS",              // Thay đổi từ ESNext
     "moduleResolution": "Node",
     "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
     "strict": true,
     "forceConsistentCasingInFileNames": true,
     "skipLibCheck": true,
-    "outDir": "./dist",              // Output sau khi build
-    "rootDir": "./src",              // Thư mục code nguồn
-    "resolveJsonModule": true
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "resolveJsonModule": true,
+    "experimentalDecorators": true,    // Thêm dòng này
+    "emitDecoratorMetadata": true,      // Thêm dòng này
+    "strictPropertyInitialization": false,  // Thêm dòng này
+
   },
-  "include": ["src"],
+  "include": ["src", "ormconfig.ts"],
   "exclude": ["node_modules"]
 }
