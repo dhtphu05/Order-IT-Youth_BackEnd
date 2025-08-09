@@ -22,7 +22,7 @@ export class Order{
 
     @Column({
         type: "enum",
-        enum: ['pending', 'assigned', 'delivering', 'delivered', 'cancelled'],
+        enum: ['pending', 'confirmed', 'assigned', 'delivering', 'delivered', 'cancelled'],
         default: 'pending'
     })
     status: string;
