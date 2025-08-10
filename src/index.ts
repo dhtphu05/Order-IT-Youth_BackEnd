@@ -3,6 +3,7 @@ import express from 'express';
 import "reflect-metadata";
 import { AppDataSource } from './data-source';
 import OrderRouter from './routes/order.routes';
+import MessengerRouter from './routes/messenger.routes';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { Order } from './entities/Order';
@@ -18,6 +19,7 @@ app.use(express.urlencoded({ extended: true }));
 
 // Routes
 app.use('/api/orders', OrderRouter);
+app.use('/api/messenger', MessengerRouter);
 
 // Health check
 app.get('/', (_req, res) => {
@@ -29,6 +31,9 @@ app.get('/', (_req, res) => {
                 create: 'POST /api/orders',
                 getAll: 'GET /api/orders',
                 assign: 'PUT /api/orders/:id/assign'
+            },
+            messenger: {
+                webhook: 'GET/POST /api/messenger/webhook'
             }
         }
     });
@@ -56,6 +61,8 @@ AppDataSource.initialize()
         
         app.listen(port, () => {
             console.log(`🚀 Server running at http://localhost:${port}`);
+            console.log(`📨 Webhook URL: http://localhost:${port}/api/messenger/webhook`);
+
         });
     })
 

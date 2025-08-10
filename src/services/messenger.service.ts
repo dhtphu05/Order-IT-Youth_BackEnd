@@ -10,8 +10,8 @@ export class MessengerService {
 
     constructor() {
         this.orderService = new OrderService();
-        this.pageAccessToken = process.env.MESSENGER_PAGE_ACCESS_TOKEN || '';
-        this.verifyToken = process.env.MESSENGER_VERIFY_TOKEN || '';
+        this.pageAccessToken = process.env.FACEBOOK_PAGE_ACCESS_TOKEN || '';
+        this.verifyToken = process.env.FACEBOOK_VERIFY_TOKEN || '';
     }
 
     //verify webhook voi facebook
@@ -54,7 +54,7 @@ export class MessengerService {
         try {
             console.log(`Handling referral for PSID: ${psid}, Referral Code: ${referralCode}`);
             //call order service to handle referral
-            await this.orderService.handleMessengerReferral(psid, referralCode);
+            await this.orderService.handleMessengerWebhook(psid, referralCode);
 
             //send a welcome message
             await this.sendWelcomeMessage(psid);

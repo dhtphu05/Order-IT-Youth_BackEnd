@@ -207,8 +207,9 @@ export class OrderService {
 
 
         }
-        catch (error) {
-            console.error(`Error handling messenger webhook: ${error.message}`);
+        catch (error: unknown) {
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+            console.error(`Error handling messenger webhook: ${errorMessage}`);
             throw error;
         }
 
@@ -220,7 +221,7 @@ export class OrderService {
     }
 
     private generateMessengerLink(referralCode: string): string {
-        const pageUsername = process.env.FACEBOOK_PAGE_USERNAME || 'your_page_username';
+        const pageUsername = process.env.FACEBOOK_PAGE_USERNAME;
         return `https://m.me/${pageUsername}?ref=${referralCode}`;
     }
 }
