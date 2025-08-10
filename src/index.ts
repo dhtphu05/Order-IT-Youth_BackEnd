@@ -2,8 +2,11 @@
 import express from 'express';
 import "reflect-metadata";
 import { AppDataSource } from './data-source';
-import orderRoutes from './routes/order.routes';
+import OrderRouter from './routes/order.routes';
 import cors from 'cors';
+import dotenv from 'dotenv';
+import { Order } from './entities/Order';
+dotenv.config();
 const app = express();
 const port = 3000;
 
@@ -14,7 +17,7 @@ app.use(cors());
 app.use(express.urlencoded({ extended: true }));
 
 // Routes
-app.use('/api/orders', orderRoutes);
+app.use('/api/orders', OrderRouter);
 
 // Health check
 app.get('/', (_req, res) => {

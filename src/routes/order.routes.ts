@@ -2,18 +2,16 @@
 import { Router } from 'express';
 import { OrderController } from '../controllers/order.controller';
 
-const router = Router();
+const OrderRouter = Router();
 const orderController = new OrderController();
 
 // POST /api/orders - Tạo đơn hàng mới
-router.post('/', orderController.createOrder);
+OrderRouter.post('/', orderController.createOrder);
 
 // GET /api/orders - Lấy danh sách đơn hàng
-// Query params: ?status=pending|assigned|delivering|delivered|cancelled
-router.get('/', orderController.getOrders);
+OrderRouter.get('/', orderController.getOrders);
 
-// PUT /api/orders/:id/assign - Gán shipper cho đơn hàng
-// Body: { "shipperId": "uuid" }
-router.put('/:id/assign', orderController.assignShipper);
+// PUT /api/orders/:id/assign - Gán shipper (FIX: đảm bảo syntax đúng)
+OrderRouter.put('/:id/assign', orderController.assignShipper);
 
-export default router;
+export default OrderRouter;

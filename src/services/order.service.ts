@@ -1,21 +1,23 @@
-import { Repository } from 'typeorm'
-import { AppDataSource } from '../data-source'
-import { Order } from '../entities/Order'
-import { OrderItem } from '../entities/OrderItem'
-import { Product } from '../entities/Product'
-import { User } from '../entities/User'
-import { CreateOrderDTO, OrderResponse, OrderListResponse, OrderStatus } from '../types/order.types'
-
+// src/services/order.service.ts
+import { Repository } from 'typeorm';
+import { AppDataSource } from '../data-source';
+import { Order } from '../entities/Order';
+import { OrderItem } from '../entities/OrderItem';
+import { Product } from '../entities/Product';
+import { User } from '../entities/User';
+import { CreateOrderDTO, OrderResponse, OrderListResponse, OrderStatus } from '../types/order.types';
+import { MessengerService } from './messenger.service';
 export class OrderService {
-    private orderRepo: Repository<Order>
-    private orderItemRepo: Repository<OrderItem>
-    private productRepo: Repository<Product>
-    private userRepo: Repository<User>
+    private orderRepo: Repository<Order>;
+    private orderItemRepo: Repository<OrderItem>;
+    private productRepo: Repository<Product>;
+    private userRepo: Repository<User>;
+
     constructor() {
-        this.orderRepo = AppDataSource.getRepository(Order)
-        this.orderItemRepo = AppDataSource.getRepository(OrderItem)
-        this.productRepo = AppDataSource.getRepository(Product)
-        this.userRepo = AppDataSource.getRepository(User)
+        this.orderRepo = AppDataSource.getRepository(Order);
+        this.orderItemRepo = AppDataSource.getRepository(OrderItem);
+        this.productRepo = AppDataSource.getRepository(Product);
+        this.userRepo = AppDataSource.getRepository(User);
     }
 
     async createOrder(data: CreateOrderDTO): Promise<OrderResponse> {
@@ -24,86 +26,110 @@ export class OrderService {
         await queryRunner.startTransaction();
 
         try {
+            // Validate input
+            if (!data.items || data.items.length === 0) {
+                throw new Error('Order must have at least one item');
+            }
+
+            // Generate referral code
             const referralCode = this.generateReferralCode();
+            
+            // Create order
             const order = this.orderRepo.create({
                 name: data.name,
                 phone: data.phone,
                 address: data.address,
-                note: data.note,
-                status: 'pending' as OrderStatus,
+                note: data.note || null,
+                status: 'pending',
                 referralCode,
                 totalPrice: 0
             });
-            const saveOrder = await queryRunner.manager.save(order);
 
-            //cretate order items and calculate total price
+            const savedOrder = await queryRunner.manager.save(order);
+
+            // Create order items and calculate total price
             let totalPrice = 0;
+            const processedItems: Array<{productId: string, quantity: number}> = [];
+
             for (const item of data.items) {
+                // Validate quantity
+                if (item.quantity <= 0) {
+                    throw new Error(`Quantity must be greater than 0 for product ${item.productId}`);
+                }
+
                 const product = await this.productRepo.findOne({
                     where: { id: item.productId }
                 });
+
                 if (!product) {
                     throw new Error(`Product with ID ${item.productId} not found`);
                 }
+
                 if (product.quantityInStock < item.quantity) {
-                    throw new Error(`Insufficient stock for product ${product.name}`);
+                    throw new Error(`Insufficient stock for product ${product.name}. Available: ${product.quantityInStock}, Requested: ${item.quantity}`);
                 }
+
+                // Create order item
                 const orderItem = this.orderItemRepo.create({
-                    order: saveOrder,
+                    order: savedOrder,
                     product,
                     quantity: item.quantity,
                     price: product.price
-                })
+                });
+
                 await queryRunner.manager.save(orderItem);
 
-                //delet ton kho
+                // Update stock
                 product.quantityInStock -= item.quantity;
                 await queryRunner.manager.save(product);
 
+                // Calculate price
                 totalPrice += Number(product.price) * item.quantity;
+                
+                // Track processed items
+                processedItems.push({
+                    productId: item.productId,
+                    quantity: item.quantity
+                });
             }
 
-            //update total price of order
-            saveOrder.totalPrice = totalPrice;
-            await queryRunner.manager.save(saveOrder);
+            // Update total price
+            savedOrder.totalPrice = totalPrice;
+            await queryRunner.manager.save(savedOrder);
 
             await queryRunner.commitTransaction();
 
-            //return to frontend
+            // Return response
             return {
-                orderId: saveOrder.id,
-                referralCode: referralCode,
+                orderId: savedOrder.id,
+                referralCode,
                 messengerLink: this.generateMessengerLink(referralCode),
-                totalPrice: saveOrder.totalPrice,
-                orderItem: data.items.map(item => ({
-                    productId: item.productId,
-                    quantity: item.quantity,
-                })),
-                status: saveOrder.status,
-                createAt: saveOrder.createdAt
+                totalPrice: Number(savedOrder.totalPrice),
+                status: savedOrder.status,
+                orderItem: processedItems,
+                createAt: savedOrder.createdAt
             };
 
-        }
-        catch (error) {
+        } catch (error) {
             await queryRunner.rollbackTransaction();
             throw error;
         } finally {
             await queryRunner.release();
         }
-
     }
 
-    async getOrderList(status?: OrderStatus): Promise<OrderListResponse[]> {
+    async getOrders(status?: OrderStatus): Promise<OrderListResponse[]> {
         const queryBuilder = this.orderRepo
             .createQueryBuilder('order')
             .leftJoinAndSelect('order.orderItems', 'orderItems')
             .leftJoinAndSelect('orderItems.product', 'product')
-            .leftJoinAndSelect('order.user', 'user')
+            .leftJoinAndSelect('order.assignedTo', 'assignedTo') // Fix: was 'order.user'
             .orderBy('order.createdAt', 'DESC');
 
         if (status) {
             queryBuilder.where('order.status = :status', { status });
         }
+
         const orders = await queryBuilder.getMany();
 
         return orders.map(order => ({
@@ -111,9 +137,9 @@ export class OrderService {
             name: order.name,
             phone: order.phone,
             address: order.address,
-            status: order.status as OrderStatus,
+            status: order.status as OrderStatus, // Type casting
             totalPrice: Number(order.totalPrice),
-            createAt: order.createdAt,
+            createdAt: order.createdAt, 
             assignedTo: order.assignedTo ? {
                 id: order.assignedTo.id,
                 fullName: order.assignedTo.fullName
@@ -128,34 +154,73 @@ export class OrderService {
         }));
     }
 
-    async assignShipper(orderId: string, shipperId: string):Promise<Order>{
-        const order= await this.orderRepo.findOne({
-            where: {id: orderId},
+    async assignShipper(orderId: string, shipperId: string): Promise<Order> {
+        const order = await this.orderRepo.findOne({
+            where: { id: orderId },
             relations: ['assignedTo']
-        })
-        const shipper = await this.userRepo.findOne({
-            where: {id: shipperId, role: 'shipper'}
         });
-        if(!order){
+
+        const shipper = await this.userRepo.findOne({
+            where: { id: shipperId, role: 'shipper' }
+        });
+
+        if (!order) {
             throw new Error(`Order with ID ${orderId} not found`);
         }
-        if(!shipper){
-            throw new Error(`Shipper with ID ${shipperId} not found`);
+
+        if (!shipper) {
+            throw new Error(`Shipper with ID ${shipperId} not found or user is not a shipper`);
         }
-        if(order.status !== 'pending') {
-            throw new Error(`Order with ID ${orderId} is not in pending status`);
+
+        if (order.status !== 'pending') {
+            throw new Error(`Order with ID ${orderId} is not in pending status. Current status: ${order.status}`);
         }
+
         order.assignedTo = shipper;
         order.status = 'assigned';
+
         return await this.orderRepo.save(order);
     }
-    private generateReferralCode(): string {
-    return `order_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+    async handleMessengerWebhook(psid: string, referralCode: string): Promise<void> {
+        try{
+            //search order by referral code
+            const order = await this.orderRepo.findOne({
+                where: { referralCode },
+                relations: ['orderItems', 'orderItems.product']
+            })
+            if(!order){
+                throw new Error(`Order with referral code ${referralCode} not found`);
+            }
+
+
+            //save psid to order
+            order.messengerPSID = psid;
+            order.status= 'confirmed';
+            await this.orderRepo.save(order);
+
+            //send confirmation message by messenger
+            const messengerService = new MessengerService();
+            await messengerService.sendOrderConfirmation(psid, order);
+
+            console.log(`Order with referral code ${referralCode} confirmed and message sent to PSID ${psid}`);
+
+
+        }
+        catch (error) {
+            console.error(`Error handling messenger webhook: ${error.message}`);
+            throw error;
+        }
+
     }
+
+    // Helper methods
+    private generateReferralCode(): string {
+        return `order_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    }
+
     private generateMessengerLink(referralCode: string): string {
-    const pageUsername = process.env.FACEBOOK_PAGE_USERNAME || 'your_page_username';
-    return `https://m.me/${pageUsername}?ref=${referralCode}`;
-  }
-
-
+        const pageUsername = process.env.FACEBOOK_PAGE_USERNAME || 'your_page_username';
+        return `https://m.me/${pageUsername}?ref=${referralCode}`;
+    }
 }

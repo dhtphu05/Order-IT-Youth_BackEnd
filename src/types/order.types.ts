@@ -15,7 +15,7 @@ export interface OrderResponse{
     messengerLink: string;
     totalPrice: number;
     orderItem: Array<CreateOrderDTO['items'][number]>;
-    status: OrderStatus;
+    status: string;
     createAt: Date;
 
 }
@@ -26,7 +26,7 @@ export interface OrderListResponse {
     address: string;
     status: 'pending' | 'confirmed' | 'assigned'| 'delivering' | 'delivered' | 'cancelled';
     totalPrice: number;
-    createAt: Date;
+    createdAt: Date;
     assignedTo?: {
         id: string;
         fullName: string;

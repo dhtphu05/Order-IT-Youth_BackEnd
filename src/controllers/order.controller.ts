@@ -49,7 +49,7 @@ export class OrderController {
                 res.status(400).json({message: 'Invalid status'});
                 return;
             }
-            const orders = await this.orderService.getOrderList(status as OrderStatus);
+            const orders = await this.orderService.getOrders(status as OrderStatus);
             res.status(200).json({
                 success: true,
                 data: orders
@@ -65,22 +65,30 @@ export class OrderController {
     }
     //put /api/orders/:id/assign
     assignShipper = async (req: Request, res: Response): Promise<void> => {
-        try{
-            const {id} = req.params;
-            const {shipperId} = req.body;
+        try {
+            const { id } = req.params;
+            const { shipperId } = req.body;
 
-            if(!shipperId){
-                res.status(400).json({message: 'Missing shipperId'});
+            if (!shipperId) {
+                res.status(400).json({
+                    success: false,
+                    message: 'Missing shipperId'
+                });
                 return;
             }
 
             const order = await this.orderService.assignShipper(id, shipperId);
+            
             res.status(200).json({
                 success: true,
                 message: 'Shipper assigned successfully',
-                data: order
+                data: {
+                    orderId: order.id,
+                    status: order.status,
+                    assignedTo: order.assignedTo?.fullName
+                }
             });
-        }catch(error){
+        } catch (error) {
             console.error('Error assigning shipper:', error);
             res.status(500).json({
                 success: false,
@@ -88,7 +96,7 @@ export class OrderController {
                 error: error instanceof Error ? error.message : 'Unknown error'
             });
         }
-    }
+    };
 
 
 }
