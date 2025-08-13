@@ -16,9 +16,18 @@ export interface OrderResponse{
     totalPrice: number;
     orderItem: Array<CreateOrderDTO['items'][number]>;
     status: string;
-    createAt: Date;
+    createdAt: Date;
 
 }
+export interface WebOrderResponse {
+    orderId: string; 
+    sessionId: string;
+    totalPrice: number;
+    orderItems: Array<CreateOrderDTO['items'][number]>;
+    status: string;
+    createdAt: Date;
+}
+
 export interface OrderListResponse {
     id: string;
     name: string;
@@ -39,5 +48,14 @@ export interface OrderListResponse {
         quantity: number;
     }>;
 
+}
+
+export interface ClaimOrdersDTO{
+    phone: string;
+}
+export interface ClaimOrdersResponse {
+    success: boolean;
+    orders: OrderListResponse[];
+    message?: string;
 }
 export type OrderStatus = 'pending' | 'confirmed' | 'assigned' | 'delivering' | 'delivered' | 'cancelled';

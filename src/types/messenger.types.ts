@@ -20,6 +20,12 @@ export interface MessengerMessage {
     }
     postback?: {
         payload: string;
+        title?: string;
+        referral?: {
+            ref: string;
+            source: string;
+            type: string;
+        };
     };
 }
 

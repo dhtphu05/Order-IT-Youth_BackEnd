@@ -4,6 +4,7 @@ import {Product} from "./entities/Product";
 import {Order} from "./entities/Order";
 import {OrderItem} from "./entities/OrderItem";
 import {ShipmentLog} from "./entities/ShipmentLog";
+import { Session } from "./entities/Session";
 import dotenv from "dotenv";
 dotenv.config();
 export const AppDataSource = new DataSource({
@@ -15,7 +16,7 @@ export const AppDataSource = new DataSource({
     database: process.env.DB_NAME,
     synchronize: true, // Chỉ dùng trong dev
     logging: false,
-    entities: [User, Product, Order, OrderItem, ShipmentLog],
+    entities: [User, Product, Order, OrderItem, ShipmentLog, Session],
     migrations: ["src/migrations/**/*.ts"],
     subscribers: [],
 });

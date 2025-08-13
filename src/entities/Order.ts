@@ -1,8 +1,8 @@
-import {Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, OneToMany} from "typeorm";
+import {Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, OneToMany, Index} from "typeorm";
 import {User} from "./User";
 import {OrderItem} from "./OrderItem";
 import {ShipmentLog} from "./ShipmentLog";
-
+import {Session} from "./Session";
 @Entity()
 export class Order{
     @PrimaryGeneratedColumn("uuid")
@@ -11,6 +11,7 @@ export class Order{
     @Column({ type: "varchar", length:255})
     name: string;
 
+    @Index()
     @Column({type: "varchar", length: 20})
     phone: string;
 
@@ -31,7 +32,10 @@ export class Order{
     totalPrice: number;
     
     @ManyToOne(() => User, user => user.orders, {nullable: true})  // Sửa user.orders
-    assignedTo: User;
+    assignedTo: User;  
+
+    @ManyToOne(() =>Session, session => session.orders, {nullable: true})
+    session: Session;
 
     @Column({ type: 'varchar', length: 255, nullable: true })
     messengerPSID: string | null;
@@ -47,4 +51,5 @@ export class Order{
 
     @OneToMany(() => ShipmentLog, shipmentLog => shipmentLog.order)
     shipmentLogs: ShipmentLog[];
+
 }

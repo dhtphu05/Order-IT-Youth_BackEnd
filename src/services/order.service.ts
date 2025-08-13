@@ -5,19 +5,23 @@ import { Order } from '../entities/Order';
 import { OrderItem } from '../entities/OrderItem';
 import { Product } from '../entities/Product';
 import { User } from '../entities/User';
-import { CreateOrderDTO, OrderResponse, OrderListResponse, OrderStatus } from '../types/order.types';
+import { CreateOrderDTO, OrderResponse, OrderListResponse, OrderStatus, WebOrderResponse, ClaimOrdersDTO, ClaimOrdersResponse } from '../types/order.types';
 import { MessengerService } from './messenger.service';
+import { SessionService } from './session.service';
 export class OrderService {
     private orderRepo: Repository<Order>;
     private orderItemRepo: Repository<OrderItem>;
     private productRepo: Repository<Product>;
     private userRepo: Repository<User>;
+    private sessionService: SessionService;
+
 
     constructor() {
         this.orderRepo = AppDataSource.getRepository(Order);
         this.orderItemRepo = AppDataSource.getRepository(OrderItem);
         this.productRepo = AppDataSource.getRepository(Product);
         this.userRepo = AppDataSource.getRepository(User);
+        this.sessionService = new SessionService();
     }
 
     async createOrder(data: CreateOrderDTO): Promise<OrderResponse> {
@@ -107,7 +111,7 @@ export class OrderService {
                 totalPrice: Number(savedOrder.totalPrice),
                 status: savedOrder.status,
                 orderItem: processedItems,
-                createAt: savedOrder.createdAt
+                createdAt: savedOrder.createdAt
             };
 
         } catch (error) {
@@ -182,7 +186,7 @@ export class OrderService {
         return await this.orderRepo.save(order);
     }
 
-    async handleMessengerWebhook(psid: string, referralCode: string): Promise<void> {
+    async handleMessengerWebhook(psid: string, referralCode: string, userType: 'first-time' | 'returning'): Promise<Order | null> {
         try{
             //search order by referral code
             const order = await this.orderRepo.findOne({
@@ -192,11 +196,21 @@ export class OrderService {
             if(!order){
                 throw new Error(`Order with referral code ${referralCode} not found`);
             }
-
+            if(order.messengerPSID){
+                if(order.messengerPSID === psid){
+                    console.log(`Order with referral code ${referralCode} already confirmed for PSID ${psid}`);
+                    return order; // Order already confirmed for this PSID
+                }
+                else{
+                    console.log(`Order with referral code ${referralCode} already confirmed for another PSID ${order.messengerPSID}`);
+                    return null; // Order already confirmed for another PSID
+                }
+            }
 
             //save psid to order
             order.messengerPSID = psid;
             order.status= 'confirmed';
+            
             await this.orderRepo.save(order);
 
             //send confirmation message by messenger
@@ -205,6 +219,7 @@ export class OrderService {
 
             console.log(`Order with referral code ${referralCode} confirmed and message sent to PSID ${psid}`);
 
+            return order;
 
         }
         catch (error: unknown) {
