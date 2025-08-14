@@ -7,6 +7,8 @@ import MessengerRouter from './routes/messenger.routes';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { Order } from './entities/Order';
+import cookieParser from 'cookie-parser';
+
 dotenv.config();
 const app = express();
 const port = 3000;
@@ -14,8 +16,12 @@ const port = 3000;
 app.use(express.json());
 
 // Middleware
-app.use(cors());
+app.use(cors({
+    origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
+    credentials: true // Cho phép gửi cookies
+}));
 app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
 
 // Routes
 app.use('/api/orders', OrderRouter);
@@ -31,6 +37,7 @@ app.get('/', (_req, res) => {
                 create: 'POST /api/orders',
                 getAll: 'GET /api/orders',
                 assign: 'PUT /api/orders/:id/assign'
+                
             },
             messenger: {
                 webhook: 'GET/POST /api/messenger/webhook'

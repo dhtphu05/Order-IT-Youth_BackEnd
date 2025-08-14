@@ -1,4 +1,3 @@
-import { ClaimOrdersResponse } from './../types/order.types';
 // src/services/order.service.ts
 import { Repository } from 'typeorm';
 import { AppDataSource } from '../data-source';
@@ -460,5 +459,8 @@ export class OrderService {
                 quantity: item.quantity
             }))
         }));
+    }
+    public getSessionService(): SessionService {
+        return this.sessionService;
     }
 }
